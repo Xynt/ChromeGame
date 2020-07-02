@@ -93,8 +93,6 @@ class _gameState extends State<gameWindow> {
   @override
   Widget build(BuildContext context) {
 
-    print("${dinoc.walkFrame}");
-
     if (!assetsLoaded) {
       return new Scaffold(
         body: Center(
@@ -109,6 +107,7 @@ class _gameState extends State<gameWindow> {
               if (!started) {
                 started = true;
               } else {
+                // Jump
               }
             });
           },
@@ -130,8 +129,9 @@ class dinoContainer {
 
     const interval = const Duration(milliseconds: 1000);
     new Timer.periodic(interval, (Timer t) {
-      gameState.build(gameState.context);
+
       swapWalkFrame();
+      gameState.build(gameState.context);
     });
 
   }
@@ -159,6 +159,7 @@ class dinoContainer {
           )
       );
     } else {
+      print("assets/img/dinoWalk$walkFrame.png");
       return Container(
           alignment: FractionalOffset.center,
           color: Colors.white,
