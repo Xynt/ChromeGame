@@ -11,7 +11,6 @@ ImageMap _images;
 SpriteSheet _sprites;
 
 class gameWindow extends StatefulWidget {
-
   @override
   _gameState createState() => new _gameState();
 
@@ -19,6 +18,7 @@ class gameWindow extends StatefulWidget {
 
 class _gameState extends State<gameWindow> {
 
+  TimerManager timerManager = new TimerManager();
   bool assetsLoaded = false;
 
   Future<Null> _loadAssets(AssetBundle bundle) async {
@@ -90,8 +90,9 @@ class _gameState extends State<gameWindow> {
   }
 
   void startTimers() {
-    Duration intspawner = Duration(milliseconds: ((seed / 2000000000) + (dinoc.obstacleNum / 20) + 1000).toInt());
-    Timer obstacleTimer = Timer.periodic(intspawner, (Timer t){
+    Duration intSpawner = Duration(milliseconds: (seed  + 1000).toInt());
+
+    Timer obstacleTimer = Timer.periodic(intSpawner, (Timer t){
       setState(() {
         if (!dinoc.obstacleIsRunning) {
           spawnObstacle();
@@ -100,32 +101,54 @@ class _gameState extends State<gameWindow> {
         }
       });
     });
+    timerManager.timerList.add(obstacleTimer);
+
+    Duration intCol = Duration(milliseconds: 10);
+
+    Timer collisionTimer = Timer.periodic(intCol, (Timer t) {
+      setState(() {
+        if (dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 80) {
+          die();
+        }
+      });
+    });
+    timerManager.timerList.add(collisionTimer);
 
     const interval = const Duration(milliseconds: 200);
     Timer walkAnimTimer = Timer.periodic(interval, (Timer t) {
       setState(() {
-        dinoc.swapWalkFrame();
-        dinoc.gameState.build(dinoc.gameState.context);
+        if (dinoc.walkFrame == 1) {
+          dinoc.walkFrame = 2;
+        } else {
+          dinoc.walkFrame = 1;
+        }
       });
     });
+    timerManager.timerList.add(walkAnimTimer);
   }
 
   void spawnObstacle() {
-    double updateSpeed = -1 * pow(5, -0.02 * dinoc.obstacleNum) + 8;
+    double updateSpeed = (-1 * pow(5, -0.02 * dinoc.obstacleNum)) + 2;
     dinoc.obstaclePadding = 1000;
     const interval = const Duration(milliseconds: 1);
-    new Timer.periodic(interval, (Timer t) {
+    Timer obs = new Timer.periodic(interval, (Timer t) {
       setState(() {
-        int obstacleNumLimited = -2;
-        print(((seed / 2000000000) + (dinoc.obstacleNum / 20)) * 2 + 1);
-        dinoc.obstaclePadding -= (((seed / 2000000000) + (dinoc.obstacleNum / 20)) * 2 + 1);
+        dinoc.obstaclePadding -= updateSpeed;
         if (dinoc.obstaclePadding <= 1) {
           dinoc.obstacleIsRunning = false;
           dinoc.obstaclePadding = 1000;
           t.cancel();
+          timerManager.timerList.remove(t);
         }
       });
     });
+    timerManager.timerList.add(obs);
+  }
+
+  void die() {
+    print("gay lol you died");
+    timerManager.cancelTimers();
+    dinoc.dinoSprite = "assets/img/dinoDie1.png";
   }
 
   bool pressing = false;
@@ -141,7 +164,7 @@ class _gameState extends State<gameWindow> {
       dinoc.dinoHeight = 1;
 
       const interval = const Duration(milliseconds: 10);
-      new Timer.periodic(interval, (Timer t){
+      Timer jumpTimer = new Timer.periodic(interval, (Timer t){
         setState(() {
           lastHeight = dinoc.dinoHeight;
           dinoc.dinoHeight += 10 + ((-10 * x * x) / 150);
@@ -159,6 +182,7 @@ class _gameState extends State<gameWindow> {
         });
         x++;
       });
+      timerManager.timerList.add(jumpTimer);
     }
   }
   bool started = false;
@@ -196,6 +220,21 @@ class _gameState extends State<gameWindow> {
   }
 }
 
+class TimerManager {
+  List<Timer> timerList;
+
+  TimerManager() {
+    timerList = new List();
+  }
+
+  void cancelTimers() {
+    for (Timer t in timerList) {
+      t.cancel();
+    }
+    timerList.clear();
+  }
+}
+
 class dinoContainer {
 
   _gameState gameState;
@@ -204,13 +243,15 @@ class dinoContainer {
 
   bool obstacleIsRunning = false;
   int obstacleNum = 0;
+  int walkFrame = 2;
+  String dinoSprite;
   String obstaclePath = "assets/img/longCactus.png";
   double rightObstaclePadding = 0;
   double obstaclePadding = 1000;
   double dinoHeight = 0;
-  int walkFrame = 2;
 
   dinoContainer(_gameState gameState) {
+    dinoSprite  = "assets/img/dinoWalk$walkFrame.png";
     this.gameState = gameState;
   }
 
@@ -262,7 +303,7 @@ class dinoContainer {
                       alignment: FractionalOffset.bottomLeft,
                       padding: EdgeInsets.fromLTRB(50, 0, 0, dinoHeight),
                       child: Image.asset(
-                        "assets/img/dinoWalk$walkFrame.png",
+                        dinoSprite,
                         scale: 5,
                       ),
                     ),
