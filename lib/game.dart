@@ -94,6 +94,20 @@ class _gameState extends State<gameWindow> {
     });
   }
 
+  void spawnObstacle() {
+    const interval = const Duration(milliseconds: 10);
+    new Timer.periodic(interval, (Timer t) {
+      setState(() {
+        dinoc.obstaclePadding--;
+
+        if (dinoc.obstaclePadding <= 0) {
+          dinoc.obstaclePadding = 1000;
+          t.cancel();
+        }
+      });
+    });
+  }
+
   bool pressing = false;
 
   void jump(TapDownDetails details) {
@@ -127,9 +141,6 @@ class _gameState extends State<gameWindow> {
       });
     }
   }
-
-  String txt = "heya";
-
   bool started = false;
 
   @override
@@ -164,16 +175,14 @@ class _gameState extends State<gameWindow> {
   }
 }
 
-class floorContainer {
-
-}
-
 class dinoContainer {
 
   _gameState gameState;
 
   final int minHoldJumpHeight = 160;
 
+  String obstaclePath = "assets/img/longCactus.png";
+  double obstaclePadding = 1000;
   double dinoHeight = 0;
   int walkFrame = 2;
 
@@ -210,29 +219,41 @@ class dinoContainer {
           child: Container(
             padding: EdgeInsets.fromLTRB(50, 50, 50, 50),
             alignment: FractionalOffset.bottomLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Stack(
               children: <Widget>[
                 Container(
                   alignment: FractionalOffset.bottomLeft,
-                  padding: EdgeInsets.fromLTRB(0, 0, 0, dinoHeight),
+                  padding: EdgeInsets.fromLTRB(120, 0, 0, 4),
                   child: Image.asset(
-                    "assets/img/dinoWalk$walkFrame.png",
-                    scale: 5,
+                      "assets/img/longCactus.png",
+                      scale: 5
                   ),
                 ),
-                Container(
-                  alignment: FractionalOffset.bottomLeft,
-                  child: AnimatedContainer(
-                    duration: Duration(seconds: 2),
-                    child: Image.asset(
-                      "assets/img/floor.png",
-                      scale: 5,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: <Widget>[
+                    Container(
+                      alignment: FractionalOffset.bottomLeft,
+                      padding: EdgeInsets.fromLTRB(20, 0, 0, dinoHeight),
+                      child: Image.asset(
+                        "assets/img/dinoWalk$walkFrame.png",
+                        scale: 5,
+                      ),
                     ),
-                  )
-                )
+                    Container(
+                        alignment: FractionalOffset.bottomLeft,
+                        child: AnimatedContainer(
+                          duration: Duration(seconds: 2),
+                          child: Image.asset(
+                            "assets/img/floor.png",
+                            scale: 0.5,
+                          ),
+                        )
+                    )
+                  ],
+                ),
               ],
             )
           )
