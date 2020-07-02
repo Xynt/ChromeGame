@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import 'package:spritewidget/spritewidget.dart';
 import 'package:flutter/rendering.dart';
+
 
 ImageMap _images;
 SpriteSheet _sprites;
@@ -70,6 +72,7 @@ class _gameState extends State<gameWindow> {
   }
 
   dinoContainer dinoc;
+  int seed = 0;
 
   @override
   void initState() {
@@ -84,9 +87,22 @@ class _gameState extends State<gameWindow> {
         assetsLoaded = true;
       });
     });
+  }
+
+  void startTimers() {
+    Duration intspawner = Duration(milliseconds: ((seed / 2000000000) + (dinoc.obstacleNum / 20) + 1000).toInt());
+    Timer obstacleTimer = Timer.periodic(intspawner, (Timer t){
+      setState(() {
+        if (!dinoc.obstacleIsRunning) {
+          spawnObstacle();
+          dinoc.obstacleIsRunning = true;
+          dinoc.obstacleNum++;
+        }
+      });
+    });
 
     const interval = const Duration(milliseconds: 200);
-    new Timer.periodic(interval, (Timer t) {
+    Timer walkAnimTimer = Timer.periodic(interval, (Timer t) {
       setState(() {
         dinoc.swapWalkFrame();
         dinoc.gameState.build(dinoc.gameState.context);
@@ -95,12 +111,16 @@ class _gameState extends State<gameWindow> {
   }
 
   void spawnObstacle() {
-    const interval = const Duration(milliseconds: 10);
+    double updateSpeed = -1 * pow(5, -0.02 * dinoc.obstacleNum) + 8;
+    dinoc.obstaclePadding = 1000;
+    const interval = const Duration(milliseconds: 1);
     new Timer.periodic(interval, (Timer t) {
       setState(() {
-        dinoc.obstaclePadding--;
-
-        if (dinoc.obstaclePadding <= 0) {
+        int obstacleNumLimited = -2;
+        print(((seed / 2000000000) + (dinoc.obstacleNum / 20)) * 2 + 1);
+        dinoc.obstaclePadding -= (((seed / 2000000000) + (dinoc.obstacleNum / 20)) * 2 + 1);
+        if (dinoc.obstaclePadding <= 1) {
+          dinoc.obstacleIsRunning = false;
           dinoc.obstaclePadding = 1000;
           t.cancel();
         }
@@ -161,6 +181,7 @@ class _gameState extends State<gameWindow> {
           onTapDown: (TapDownDetails details) {
             setState(() {
               if (!started) {
+                startTimers();
                 started = true;
               } else {
                 pressing = true;
@@ -181,7 +202,10 @@ class dinoContainer {
 
   final int minHoldJumpHeight = 160;
 
+  bool obstacleIsRunning = false;
+  int obstacleNum = 0;
   String obstaclePath = "assets/img/longCactus.png";
+  double rightObstaclePadding = 0;
   double obstaclePadding = 1000;
   double dinoHeight = 0;
   int walkFrame = 2;
@@ -223,7 +247,7 @@ class dinoContainer {
               children: <Widget>[
                 Container(
                   alignment: FractionalOffset.bottomLeft,
-                  padding: EdgeInsets.fromLTRB(120, 0, 0, 4),
+                  padding: EdgeInsets.fromLTRB(obstaclePadding, 0, rightObstaclePadding, 4),
                   child: Image.asset(
                       "assets/img/longCactus.png",
                       scale: 5
@@ -236,7 +260,7 @@ class dinoContainer {
                   children: <Widget>[
                     Container(
                       alignment: FractionalOffset.bottomLeft,
-                      padding: EdgeInsets.fromLTRB(20, 0, 0, dinoHeight),
+                      padding: EdgeInsets.fromLTRB(50, 0, 0, dinoHeight),
                       child: Image.asset(
                         "assets/img/dinoWalk$walkFrame.png",
                         scale: 5,
