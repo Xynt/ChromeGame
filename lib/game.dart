@@ -84,6 +84,48 @@ class _gameState extends State<gameWindow> {
         assetsLoaded = true;
       });
     });
+
+    const interval = const Duration(milliseconds: 200);
+    new Timer.periodic(interval, (Timer t) {
+      setState(() {
+        dinoc.swapWalkFrame();
+        dinoc.gameState.build(dinoc.gameState.context);
+      });
+    });
+  }
+
+  bool pressing = false;
+
+  void jump(TapDownDetails details) {
+
+    int heldUpCounter = 0;
+    double lastHeight = 0;
+
+    if (dinoc.dinoHeight == 0) {
+      int x = -10;
+
+      dinoc.dinoHeight = 1;
+
+      const interval = const Duration(milliseconds: 10);
+      new Timer.periodic(interval, (Timer t){
+        setState(() {
+          lastHeight = dinoc.dinoHeight;
+          dinoc.dinoHeight += 10 + ((-10 * x * x) / 150);
+
+          if (heldUpCounter < 10 && lastHeight > dinoc.minHoldJumpHeight && pressing) {
+            dinoc.dinoHeight = lastHeight;
+            heldUpCounter++;
+            x = 10;
+          }
+
+          if (dinoc.dinoHeight <= 0) {
+            dinoc.dinoHeight = 0;
+            t.cancel();
+          }
+        });
+        x++;
+      });
+    }
   }
 
   String txt = "heya";
@@ -103,11 +145,15 @@ class _gameState extends State<gameWindow> {
       return new Scaffold(
         body: GestureDetector(
           onTap: () {
+            pressing = false;
+          },
+          onTapDown: (TapDownDetails details) {
             setState(() {
               if (!started) {
                 started = true;
               } else {
-                // Jump
+                pressing = true;
+                jump(details);
               }
             });
           },
@@ -118,22 +164,21 @@ class _gameState extends State<gameWindow> {
   }
 }
 
+class floorContainer {
+
+}
+
 class dinoContainer {
 
   _gameState gameState;
 
+  final int minHoldJumpHeight = 160;
+
+  double dinoHeight = 0;
   int walkFrame = 2;
 
   dinoContainer(_gameState gameState) {
     this.gameState = gameState;
-
-    const interval = const Duration(milliseconds: 1000);
-    new Timer.periodic(interval, (Timer t) {
-
-      swapWalkFrame();
-      gameState.build(gameState.context);
-    });
-
   }
 
   void swapWalkFrame() {
@@ -159,17 +204,37 @@ class dinoContainer {
           )
       );
     } else {
-      print("assets/img/dinoWalk$walkFrame.png");
       return Container(
           alignment: FractionalOffset.center,
           color: Colors.white,
           child: Container(
-            padding: EdgeInsets.all(50.0),
+            padding: EdgeInsets.fromLTRB(50, 50, 50, 50),
             alignment: FractionalOffset.bottomLeft,
-            child: Image.asset(
-              "assets/img/dinoWalk$walkFrame.png",
-              scale: 5,
-            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                Container(
+                  alignment: FractionalOffset.bottomLeft,
+                  padding: EdgeInsets.fromLTRB(0, 0, 0, dinoHeight),
+                  child: Image.asset(
+                    "assets/img/dinoWalk$walkFrame.png",
+                    scale: 5,
+                  ),
+                ),
+                Container(
+                  alignment: FractionalOffset.bottomLeft,
+                  child: AnimatedContainer(
+                    duration: Duration(seconds: 2),
+                    child: Image.asset(
+                      "assets/img/floor.png",
+                      scale: 5,
+                    ),
+                  )
+                )
+              ],
+            )
           )
       );
     }
