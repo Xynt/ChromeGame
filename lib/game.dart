@@ -177,10 +177,6 @@ class _gameState extends State<gameWindow> {
 
   bool pressing = false;
 
-  void duck() {
-
-  }
-
   void jump(TapDownDetails details) {
     int heldUpCounter = 0;
     double lastHeight = 0;
@@ -231,10 +227,10 @@ class _gameState extends State<gameWindow> {
             GestureDetector(
                 onTap: () {
                   pressing = false;
+                  dinoc.ducking = false;
                 },
                 onTapDown: (TapDownDetails details) {
                   setState(() {
-                    print("${details.globalPosition.dx}, ${width / 2}");
                     if (!started) {
                       start();
                       started = true;
@@ -244,7 +240,7 @@ class _gameState extends State<gameWindow> {
                         if (details.globalPosition.dx < width / 2) {
                           jump(details);
                         } else {
-                          // Duck
+                          dinoc.ducking = true;
                         }
                       }
                     }
