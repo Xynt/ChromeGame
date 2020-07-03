@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import 'package:spritewidget/spritewidget.dart';
 import 'package:flutter/rendering.dart';
+import 'package:vibration/vibration.dart';
 
 
 ImageMap _images;
@@ -71,15 +72,15 @@ class _gameState extends State<gameWindow> {
     ]);
   }
 
-  dinoContainer dinoc;
+  DinoContainer dinoc;
   int seed = 0;
   bool started = false;
 
   @override
   void initState() {
-
     super.initState();
-    dinoc = new dinoContainer(this);
+
+    dinoc = new DinoContainer(this);
 
     AssetBundle bundle = rootBundle;
 
@@ -93,12 +94,15 @@ class _gameState extends State<gameWindow> {
   var screenSize;
   double width = 0;
   double height = 0;
+  ObstacleManager obsManager;
 
   void start() {
 
     screenSize = MediaQuery.of(context).size;
     width = screenSize.width;
     height = screenSize.height;
+
+    obsManager = ObstacleManager();
 
     Random rnd = new Random();
     seed = rnd.nextInt(2000000000);
@@ -108,6 +112,7 @@ class _gameState extends State<gameWindow> {
     Timer obstacleTimer = Timer.periodic(intSpawner, (Timer t){
       setState(() {
         if (!dinoc.obstacleIsRunning) {
+          obsManager.nextObstacle(seed, dinoc.obstacleNum);
           spawnObstacle();
           dinoc.obstacleIsRunning = true;
           dinoc.obstacleNum++;
@@ -120,8 +125,12 @@ class _gameState extends State<gameWindow> {
     Duration intCol = Duration(milliseconds: 10);
     Timer collisionTimer = Timer.periodic(intCol, (Timer t) {
       setState(() {
-        if ((dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 20) || (dinoc.obstaclePadding <= 100 && dinoc.dinoHeight <= 20)) {
-          die();
+        Obstacle obs = obsManager.obstacles[obsManager.currentObs];
+        if ((dinoc.obstaclePadding <= obs.lowPadding && dinoc.dinoHeight <= obs.lowHeight) ||
+            (dinoc.obstaclePadding <= obs.highPadding && dinoc.dinoHeight <= obs.highHeight)) {
+          if (!(obs.canDuckUnder && dinoc.ducking) || (obs.canDuckUnder && dinoc.dinoHeight > 10)) {
+            die();
+          }
         }
       });
     });
@@ -144,7 +153,7 @@ class _gameState extends State<gameWindow> {
   void reset() {
     setState(() {
       timerManager.cancelTimers();
-      dinoc = new dinoContainer(this);
+      dinoc = new DinoContainer(this);
       started = false;
       build(context);
     });
@@ -171,6 +180,7 @@ class _gameState extends State<gameWindow> {
   }
 
   void die() {
+    Vibration.vibrate();
     timerManager.cancelTimers();
     dinoc.died = true;
   }
@@ -224,6 +234,11 @@ class _gameState extends State<gameWindow> {
       return new Scaffold(
         body: Stack (
           children: [
+            Row(
+              children: <Widget>[
+
+              ],
+            ),
             GestureDetector(
                 onTap: () {
                   pressing = false;
@@ -255,6 +270,49 @@ class _gameState extends State<gameWindow> {
   }
 }
 
+class ObstacleManager {
+  int currentObs = 0;
+  List<Obstacle> obstacles;
+  ObstacleManager() {
+    obstacles = new List(); // dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 20) || (dinoc.obstaclePadding <= 100 && dinoc.dinoHeight <= 20
+    obstacles.add(new Obstacle("assets/img/longCactus.png", 0, 120, 20, 100, 80, false));
+    obstacles.add(new Obstacle("assets/img/cactusArray1.png", 0, 140, 20, 120, 40, false));
+    obstacles.add(new Obstacle("assets/img/cactusArray2.png", 0, 14+0, 20, 120, 40, false));
+    obstacles.add(new Obstacle("assets/img/bigCactusArray1.png", 0, 100, 60, 80, 100, false));
+    obstacles.add(new Obstacle("assets/img/bigCactusArray2.png", 0, 100, 60, 80, 100, false));
+    obstacles.add(new Obstacle("assets/img/bird.gif", 70, 120, 80, 100, 500, true));
+  }
+
+  Obstacle getCurrentObs() {
+    return obstacles[currentObs];
+  }
+
+  Obstacle nextObstacle(int seed, int obstacleNum) {
+    currentObs = (((1 + seed / 2000000000) * obstacleNum) % obstacles.length).toInt();
+    return obstacles[currentObs];
+  }
+}
+
+class Obstacle {
+  String sprite;
+  int lowPadding;
+  int lowHeight;
+  int highPadding;
+  int highHeight;
+  bool canDuckUnder;
+  int defaultHeight;
+
+  Obstacle(sprite, defaultHeight, lowPadding, lowHeight, highPadding, highHeight, canDuckUnder) {
+    this.sprite = sprite;
+    this.defaultHeight = defaultHeight;
+    this.lowPadding = lowPadding;
+    this.lowHeight = lowHeight;
+    this.highPadding = highPadding;
+    this.highHeight = highHeight;
+    this.canDuckUnder = canDuckUnder;
+  }
+}
+
 class TimerManager {
   List<Timer> timerList;
 
@@ -270,7 +328,7 @@ class TimerManager {
   }
 }
 
-class dinoContainer {
+class DinoContainer {
 
   _gameState gameState;
 
@@ -287,7 +345,7 @@ class dinoContainer {
   double obstaclePadding = 1000;
   double dinoHeight = 0;
 
-  dinoContainer(_gameState gameState) {
+  DinoContainer(_gameState gameState) {
     dinoSprite = "assets/img/dinoWalk$walkFrame.png";
     this.gameState = gameState;
   }
@@ -350,9 +408,9 @@ class dinoContainer {
                 ),
                 Container(
                   alignment: FractionalOffset.bottomLeft,
-                  padding: EdgeInsets.fromLTRB(obstaclePadding, 0, rightObstaclePadding, 4),
+                  padding: EdgeInsets.fromLTRB(obstaclePadding, 0, rightObstaclePadding, 4.0 + gameState.obsManager.getCurrentObs().defaultHeight),
                   child: Image.asset(
-                      "assets/img/longCactus.png",
+                      gameState.obsManager.getCurrentObs().sprite,
                       scale: 5
                   ),
                 ),
