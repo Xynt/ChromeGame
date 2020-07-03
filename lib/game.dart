@@ -73,6 +73,7 @@ class _gameState extends State<gameWindow> {
 
   dinoContainer dinoc;
   int seed = 0;
+  bool started = false;
 
   @override
   void initState() {
@@ -90,8 +91,11 @@ class _gameState extends State<gameWindow> {
   }
 
   void startTimers() {
-    Duration intSpawner = Duration(milliseconds: (seed  + 1000).toInt());
 
+    Random rnd = new Random();
+    seed = rnd.nextInt(2000000000);
+
+    Duration intSpawner = Duration(milliseconds: (seed / 200000000 + 1000).toInt());
     Timer obstacleTimer = Timer.periodic(intSpawner, (Timer t){
       setState(() {
         if (!dinoc.obstacleIsRunning) {
@@ -107,7 +111,7 @@ class _gameState extends State<gameWindow> {
 
     Timer collisionTimer = Timer.periodic(intCol, (Timer t) {
       setState(() {
-        if (dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 80) {
+        if ((dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 20) || (dinoc.obstaclePadding <= 100 && dinoc.dinoHeight <= 20)) {
           die();
         }
       });
@@ -127,8 +131,17 @@ class _gameState extends State<gameWindow> {
     timerManager.timerList.add(walkAnimTimer);
   }
 
+  void reset() {
+    setState(() {
+      timerManager.cancelTimers();
+      dinoc = new dinoContainer(this);
+      started = false;
+      build(context);
+    });
+  }
+
   void spawnObstacle() {
-    double updateSpeed = (-1 * pow(5, -0.02 * dinoc.obstacleNum)) + 2;
+    double updateSpeed = (-1 * pow(5, -0.02 * dinoc.obstacleNum)) + 2.5;
     dinoc.obstaclePadding = 1000;
     const interval = const Duration(milliseconds: 1);
     Timer obs = new Timer.periodic(interval, (Timer t) {
@@ -146,15 +159,13 @@ class _gameState extends State<gameWindow> {
   }
 
   void die() {
-    print("gay lol you died");
     timerManager.cancelTimers();
-    dinoc.dinoSprite = "assets/img/dinoDie1.png";
+    dinoc.died = true;
   }
 
   bool pressing = false;
 
   void jump(TapDownDetails details) {
-
     int heldUpCounter = 0;
     double lastHeight = 0;
 
@@ -164,12 +175,13 @@ class _gameState extends State<gameWindow> {
       dinoc.dinoHeight = 1;
 
       const interval = const Duration(milliseconds: 10);
-      Timer jumpTimer = new Timer.periodic(interval, (Timer t){
+      Timer jumpTimer = new Timer.periodic(interval, (Timer t) {
         setState(() {
           lastHeight = dinoc.dinoHeight;
           dinoc.dinoHeight += 10 + ((-10 * x * x) / 150);
 
-          if (heldUpCounter < 10 && lastHeight > dinoc.minHoldJumpHeight && pressing) {
+          if (heldUpCounter < 10 && lastHeight > dinoc.minHoldJumpHeight &&
+              pressing) {
             dinoc.dinoHeight = lastHeight;
             heldUpCounter++;
             x = 10;
@@ -185,7 +197,6 @@ class _gameState extends State<gameWindow> {
       timerManager.timerList.add(jumpTimer);
     }
   }
-  bool started = false;
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +252,7 @@ class dinoContainer {
 
   final int minHoldJumpHeight = 160;
 
+  bool died = false;
   bool obstacleIsRunning = false;
   int obstacleNum = 0;
   int walkFrame = 2;
@@ -251,8 +263,17 @@ class dinoContainer {
   double dinoHeight = 0;
 
   dinoContainer(_gameState gameState) {
-    dinoSprite  = "assets/img/dinoWalk$walkFrame.png";
+    dinoSprite = "assets/img/dinoWalk$walkFrame.png";
     this.gameState = gameState;
+  }
+
+  String getDinoSprite() {
+    if (!died) {
+      dinoSprite = "assets/img/dinoWalk$walkFrame.png";
+    } else {
+      dinoSprite = "assets/img/dinoDie1.png";
+    }
+    return dinoSprite;
   }
 
   void swapWalkFrame() {
@@ -287,6 +308,18 @@ class dinoContainer {
             child: Stack(
               children: <Widget>[
                 Container(
+                  alignment: FractionalOffset.topLeft,
+                  child: FlatButton(
+                    onPressed: () {
+                      gameState.reset();
+                    },
+                    child: Image.asset(
+                      "assets/img/retry.png",
+                      scale: 5,
+                    ),
+                  )
+                ),
+                Container(
                   alignment: FractionalOffset.bottomLeft,
                   padding: EdgeInsets.fromLTRB(obstaclePadding, 0, rightObstaclePadding, 4),
                   child: Image.asset(
@@ -303,7 +336,7 @@ class dinoContainer {
                       alignment: FractionalOffset.bottomLeft,
                       padding: EdgeInsets.fromLTRB(50, 0, 0, dinoHeight),
                       child: Image.asset(
-                        dinoSprite,
+                        getDinoSprite(),
                         scale: 5,
                       ),
                     ),
