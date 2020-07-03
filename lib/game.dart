@@ -6,7 +6,7 @@ import "package:flutter/services.dart";
 import 'package:spritewidget/spritewidget.dart';
 import 'package:flutter/rendering.dart';
 import 'package:vibration/vibration.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 ImageMap _images;
 SpriteSheet _sprites;
@@ -73,6 +73,7 @@ class _gameState extends State<gameWindow> {
   }
 
   DinoContainer dinoc;
+  TutorialManager tut;
   int seed = 0;
   bool started = false;
 
@@ -80,6 +81,7 @@ class _gameState extends State<gameWindow> {
   void initState() {
     super.initState();
 
+    tut = new TutorialManager(this);
     dinoc = new DinoContainer(this);
 
     AssetBundle bundle = rootBundle;
@@ -179,7 +181,32 @@ class _gameState extends State<gameWindow> {
     timerManager.timerList.add(obs);
   }
 
+  void saveHighscore() async {
+    if (dinoc.obstacleNum > getHighscore()) {
+      var prefs = await SharedPreferences.getInstance();
+      prefs.setInt("highscore", dinoc.obstacleNum);
+    }
+  }
+
+  int _highscore = 0;
+
+  int getHighscore() {
+    _updateHighscore();
+    return _highscore;
+  }
+
+  void _updateHighscore() async {
+    var prefs = await SharedPreferences.getInstance();
+    if (prefs.get("highscore") != null) {
+      _highscore =  prefs.get("highscore");
+    } else {
+      print("highscore was empty");
+      _highscore = 0;
+    }
+  }
+
   void die() {
+    saveHighscore();
     Vibration.vibrate();
     timerManager.cancelTimers();
     dinoc.died = true;
@@ -234,11 +261,6 @@ class _gameState extends State<gameWindow> {
       return new Scaffold(
         body: Stack (
           children: [
-            Row(
-              children: <Widget>[
-
-              ],
-            ),
             GestureDetector(
                 onTap: () {
                   pressing = false;
@@ -262,7 +284,8 @@ class _gameState extends State<gameWindow> {
                   });
                 },
                 child: dinoc.getContainer()
-            )
+            ),
+            tut.getTutorialRow()
           ],
         )
       );
@@ -310,6 +333,83 @@ class Obstacle {
     this.highPadding = highPadding;
     this.highHeight = highHeight;
     this.canDuckUnder = canDuckUnder;
+  }
+}
+
+class TutorialManager {
+  _gameState state;
+  TutorialManager(_gameState state) {
+    this.state = state;
+  }
+
+  Row getTutorialRow() {
+    if (state.started) {
+      return Row(
+        children: <Widget>[
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.all(50),
+              alignment: Alignment.topRight,
+              child: Text(
+                  "Score: ${state.dinoc.obstacleNum}",
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                  )
+              ),
+            )
+          )
+        ],
+      );
+    }
+    return Row(
+      children: <Widget>[
+        Flexible(
+            fit: FlexFit.tight,
+            child: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  "Jump",
+                  style: TextStyle(
+                      color: Colors.grey
+                  ),
+                )
+            )
+        ),
+        Container(
+          padding: EdgeInsets.all(100),
+          width: 1,
+          color: Colors.grey,
+        ),
+        Flexible(
+            fit: FlexFit.tight,
+            child: Stack(
+              children: <Widget>[
+                Container(
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Duck",
+                    style: TextStyle(
+                      color: Colors.grey
+                    ),
+                  )
+                ),
+                Container(
+                  padding: EdgeInsets.all(50),
+                  alignment: Alignment.topRight,
+                  child: Text(
+                    "Highscore: ${state.getHighscore()}",
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    )
+                  )
+                )
+              ],
+            )
+        )
+      ],
+    );
   }
 }
 
