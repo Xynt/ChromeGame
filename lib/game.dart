@@ -78,8 +78,8 @@ class _gameState extends State<gameWindow> {
   @override
   void initState() {
 
-    dinoc = new dinoContainer(this);
     super.initState();
+    dinoc = new dinoContainer(this);
 
     AssetBundle bundle = rootBundle;
 
@@ -90,11 +90,20 @@ class _gameState extends State<gameWindow> {
     });
   }
 
-  void startTimers() {
+  var screenSize;
+  double width = 0;
+  double height = 0;
+
+  void start() {
+
+    screenSize = MediaQuery.of(context).size;
+    width = screenSize.width;
+    height = screenSize.height;
 
     Random rnd = new Random();
     seed = rnd.nextInt(2000000000);
 
+    // Obstacle Spawner Timer
     Duration intSpawner = Duration(milliseconds: (seed / 200000000 + 1000).toInt());
     Timer obstacleTimer = Timer.periodic(intSpawner, (Timer t){
       setState(() {
@@ -107,8 +116,8 @@ class _gameState extends State<gameWindow> {
     });
     timerManager.timerList.add(obstacleTimer);
 
+    // Collision Checker Timer
     Duration intCol = Duration(milliseconds: 10);
-
     Timer collisionTimer = Timer.periodic(intCol, (Timer t) {
       setState(() {
         if ((dinoc.obstaclePadding <= 120 && dinoc.dinoHeight <= 20) || (dinoc.obstaclePadding <= 100 && dinoc.dinoHeight <= 20)) {
@@ -118,6 +127,7 @@ class _gameState extends State<gameWindow> {
     });
     timerManager.timerList.add(collisionTimer);
 
+    // Walking Animation Timer
     const interval = const Duration(milliseconds: 200);
     Timer walkAnimTimer = Timer.periodic(interval, (Timer t) {
       setState(() {
@@ -143,6 +153,8 @@ class _gameState extends State<gameWindow> {
   void spawnObstacle() {
     double updateSpeed = (-1 * pow(5, -0.02 * dinoc.obstacleNum)) + 2.5;
     dinoc.obstaclePadding = 1000;
+
+    // Obstacle mover Timer
     const interval = const Duration(milliseconds: 1);
     Timer obs = new Timer.periodic(interval, (Timer t) {
       setState(() {
@@ -165,6 +177,10 @@ class _gameState extends State<gameWindow> {
 
   bool pressing = false;
 
+  void duck() {
+
+  }
+
   void jump(TapDownDetails details) {
     int heldUpCounter = 0;
     double lastHeight = 0;
@@ -174,6 +190,7 @@ class _gameState extends State<gameWindow> {
 
       dinoc.dinoHeight = 1;
 
+      // Jump Timer
       const interval = const Duration(milliseconds: 10);
       Timer jumpTimer = new Timer.periodic(interval, (Timer t) {
         setState(() {
@@ -209,22 +226,33 @@ class _gameState extends State<gameWindow> {
       );
     } else {
       return new Scaffold(
-        body: GestureDetector(
-          onTap: () {
-            pressing = false;
-          },
-          onTapDown: (TapDownDetails details) {
-            setState(() {
-              if (!started) {
-                startTimers();
-                started = true;
-              } else {
-                pressing = true;
-                jump(details);
-              }
-            });
-          },
-          child: dinoc.getContainer()
+        body: Stack (
+          children: [
+            GestureDetector(
+                onTap: () {
+                  pressing = false;
+                },
+                onTapDown: (TapDownDetails details) {
+                  setState(() {
+                    print("${details.globalPosition.dx}, ${width / 2}");
+                    if (!started) {
+                      start();
+                      started = true;
+                    } else {
+                      pressing = true;
+                      if (!dinoc.died) {
+                        if (details.globalPosition.dx < width / 2) {
+                          jump(details);
+                        } else {
+                          // Duck
+                        }
+                      }
+                    }
+                  });
+                },
+                child: dinoc.getContainer()
+            )
+          ],
         )
       );
     }
@@ -252,6 +280,7 @@ class dinoContainer {
 
   final int minHoldJumpHeight = 160;
 
+  bool ducking = false;
   bool died = false;
   bool obstacleIsRunning = false;
   int obstacleNum = 0;
@@ -269,7 +298,11 @@ class dinoContainer {
 
   String getDinoSprite() {
     if (!died) {
-      dinoSprite = "assets/img/dinoWalk$walkFrame.png";
+      if (ducking) {
+        dinoSprite = "assets/img/dinoDuck$walkFrame.png";
+      } else {
+        dinoSprite = "assets/img/dinoWalk$walkFrame.png";
+      }
     } else {
       dinoSprite = "assets/img/dinoDie1.png";
     }
